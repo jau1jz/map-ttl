@@ -22,9 +22,8 @@ type Map_ttl struct {
 }
 
 func (slf *Map_ttl) tll(key interface{}, ttl time.Duration, close_chan chan int) {
-
+	defer close(close_chan)
 	select {
-
 	case <-time.After(ttl):
 		slf.Lock()
 		defer slf.Unlock()
@@ -41,6 +40,7 @@ func (slf *Map_ttl) tll(key interface{}, ttl time.Duration, close_chan chan int)
 			delete(slf.data, key)
 		}
 	}
+
 }
 func (slf *Map_ttl) Set_callback(callback_chan *chan interface{}) {
 	slf.Lock()
