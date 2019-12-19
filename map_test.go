@@ -13,6 +13,10 @@ func init() {
 }
 func TestMap_tll_Set(t *testing.T) {
 	test_map.Set("jiang", "zhu", time.Minute)
+	test_map.Set("jiang", "zhu1", time.Minute)
+	test_map.Set("jiang1", "zhu1", time.Minute)
+
+	fmt.Printf("%+v \n ", test_map.data)
 }
 func TestMap_tll_Get(t *testing.T) {
 	test_map.Set("jiang", "zhu", time.Minute)
@@ -26,6 +30,7 @@ func TestMap_tll_Del(t *testing.T) {
 	test_map.Set("jiang3", "zhu3", 0)
 	fmt.Printf("%+v \n ", test_map.data)
 	test_map.Del("jiang3")
+	time.Sleep(time.Second)
 	fmt.Printf("%+v \n ", test_map.data)
 }
 func TestMap_tll_Set_callback(t *testing.T) {

@@ -1,14 +1,18 @@
 package map_ttl
 
 import (
-	"context"
 	"sync"
 	"time"
 )
 
+const (
+	Del    = 1
+	Re_set = 2
+)
+
 type ttl_data struct {
-	CancelFunc context.CancelFunc
-	ttl        time.Time
+	Close_chan   chan int
+	Timeout_time time.Time
 }
 type Map_ttl struct {
 	sync.RWMutex
@@ -17,19 +21,25 @@ type Map_ttl struct {
 	data_chan *chan interface{}
 }
 
-func (slf *Map_ttl) tll(key interface{}, ctx context.Context) {
+func (slf *Map_ttl) tll(key interface{}, ttl time.Duration, close_chan chan int) {
+
 	select {
-	case <-ctx.Done():
+
+	case <-time.After(ttl):
 		slf.Lock()
 		defer slf.Unlock()
 		if slf.data_chan != nil {
 			if v, ok := slf.data[key]; ok {
 				*slf.data_chan <- v
 			}
-
 		}
 		delete(slf.ttl, key)
 		delete(slf.data, key)
+	case flag := <-close_chan:
+		if flag == Del {
+			delete(slf.ttl, key)
+			delete(slf.data, key)
+		}
 	}
 }
 func (slf *Map_ttl) Set_callback(callback_chan *chan interface{}) {
@@ -46,22 +56,21 @@ func (slf *Map_ttl) Set(key, value interface{}, ttl time.Duration) {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.data != nil {
-		if ttl > 0 {
-			ctx := context.Background()
-			timeout_time := time.Now().Add(ttl)
-			if v, ok := slf.ttl[key]; ok {
-				v.CancelFunc()
-			} else {
-				time_ctx, cancel_fun := context.WithDeadline(ctx, timeout_time)
-				slf.ttl[key] = ttl_data{
-					CancelFunc: cancel_fun,
-					ttl:        timeout_time,
-				}
-				go slf.tll(key, time_ctx)
-			}
+		if v, ok := slf.ttl[key]; ok {
+			v.Close_chan <- Re_set
 		}
+		if ttl == 0 {
+			ttl = time.Minute * 65535
+		}
+		Close_chan := make(chan int)
+		slf.ttl[key] = ttl_data{
+			Timeout_time: time.Now().Add(ttl),
+			Close_chan:   Close_chan,
+		}
+		go slf.tll(key, ttl, Close_chan)
+
+		slf.data[key] = value
 	}
-	slf.data[key] = value
 }
 func (slf *Map_ttl) Get(key interface{}) interface{} {
 	slf.Lock()
@@ -78,8 +87,7 @@ func (slf *Map_ttl) Del(key interface{}) {
 	defer slf.Unlock()
 	if slf.ttl != nil {
 		if v, ok := slf.ttl[key]; ok {
-			delete(slf.data, key)
-			v.CancelFunc()
+			v.Close_chan <- Del
 		}
 	}
 }
@@ -88,7 +96,7 @@ func (slf *Map_ttl) Get_ttl(key interface{}) time.Duration {
 	defer slf.Unlock()
 	if slf.ttl != nil {
 		if v, ok := slf.ttl[key]; ok {
-			return v.ttl.Sub(time.Now())
+			return v.Timeout_time.Sub(time.Now())
 		}
 	}
 	return -1
