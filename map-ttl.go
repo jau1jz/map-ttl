@@ -104,8 +104,14 @@ func (slf *Map_ttl) Get_ttl(key interface{}) time.Duration {
 func (slf *Map_ttl) Clear() {
 	slf.Lock()
 	defer slf.Unlock()
-	slf.data = make(map[interface{}]interface{})
-	slf.ttl = make(map[interface{}]ttl_data)
+	for _, data := range slf.ttl {
+		data.Close_chan <- Del
+	}
+	for {
+		if len(slf.data) == 0 {
+			break
+		}
+	}
 }
 func (slf *Map_ttl) Len() int {
 	slf.Lock()
