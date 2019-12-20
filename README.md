@@ -1,5 +1,5 @@
 # map-ttl
-a ttl map
+golang ttl map like redis
 ```
 func main() {
 	tmap := map_ttl.Map_ttl{}
