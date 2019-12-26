@@ -51,7 +51,13 @@ func (slf *Map_ttl) Init() {
 	slf.data = make(map[interface{}]interface{})
 	slf.ttl = make(map[interface{}]ttl_data)
 }
-
+func (slf *Map_ttl) SetData(key, value interface{}) {
+	slf.Lock()
+	defer slf.Unlock()
+	if slf.data != nil {
+		slf.data[key] = value
+	}
+}
 func (slf *Map_ttl) Set(key, value interface{}, ttl time.Duration) {
 	slf.Lock()
 	defer slf.Unlock()

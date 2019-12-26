@@ -32,6 +32,8 @@ func TestMap_tll_Del(t *testing.T) {
 	test_map.Del("jiang3")
 	time.Sleep(time.Second)
 	fmt.Printf("%+v \n ", test_map.data)
+	test_map.SetData("jiang2", "zhu4")
+	fmt.Printf("%+v \n ", test_map.data)
 }
 func TestMap_tll_Set_callback(t *testing.T) {
 	c := make(chan interface{})
