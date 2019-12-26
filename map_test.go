@@ -67,3 +67,12 @@ func TestMap_tll_Range(t *testing.T) {
 		fmt.Printf("%s %s \n", key, value)
 	})
 }
+func TestMap_tll_UnsafeSetData(t *testing.T) {
+	test_map.Set("jiang1", "zhu1", 0)
+	test_map.Set("jiang2", "zhu2", 0)
+	test_map.Set("jiang3", "zhu3", 0)
+	test_map.Range(func(key interface{}, value interface{}) {
+		test_map.UnsafeSetData(key, 111)
+	})
+	fmt.Printf("%+v \n ", test_map.data)
+}

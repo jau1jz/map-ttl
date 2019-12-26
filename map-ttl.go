@@ -58,6 +58,11 @@ func (slf *Map_ttl) SetData(key, value interface{}) {
 		slf.data[key] = value
 	}
 }
+func (slf *Map_ttl) UnsafeSetData(key, value interface{}) {
+	if slf.data != nil {
+		slf.data[key] = value
+	}
+}
 func (slf *Map_ttl) Set(key, value interface{}, ttl time.Duration) {
 	slf.Lock()
 	defer slf.Unlock()
