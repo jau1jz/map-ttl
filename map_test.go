@@ -6,73 +6,81 @@ import (
 	"time"
 )
 
-var test_map Map_ttl
+var testmap map_ttl
 
 func init() {
-	test_map.Init()
+	testmap.Init()
 }
 func TestMap_tll_Set(t *testing.T) {
-	test_map.Set("jiang", "zhu", time.Minute)
-	test_map.Set("jiang", "zhu1", time.Minute)
-	test_map.Set("jiang1", "zhu1", time.Minute)
+	println("Set")
+	testmap.Set("jiang", "zhu", time.Minute)
+	testmap.Set("jiang", "zhu1", time.Minute)
+	testmap.Set("jiang1", "zhu1", time.Minute)
 
-	fmt.Printf("%+v \n ", test_map.data)
+	fmt.Printf("%+v \n ", testmap.ttl)
 }
 func TestMap_tll_Get(t *testing.T) {
-	test_map.Set("jiang", "zhu", time.Minute)
-	if obj := test_map.Get("jiang"); obj != nil {
+	println("Get")
+	testmap.Set("jiang", "zhu", time.Minute)
+	if obj := testmap.Get("jiang"); obj != nil {
 		println(obj.(string))
 	}
 }
 func TestMap_tll_Del(t *testing.T) {
-	test_map.Set("jiang1", "zhu1", 0)
-	test_map.Set("jiang2", "zhu2", 0)
-	test_map.Set("jiang3", "zhu3", 0)
-	fmt.Printf("%+v \n ", test_map.data)
-	test_map.Del("jiang3")
+	println("Del")
+	testmap.Set("jiang1", "zhu1", 0)
+	testmap.Set("jiang2", "zhu2", 0)
+	testmap.Set("jiang3", "zhu3", 0)
+	fmt.Printf("%+v \n ", testmap.ttl)
+	testmap.Del("jiang3")
 	time.Sleep(time.Second)
-	fmt.Printf("%+v \n ", test_map.data)
-	test_map.SetData("jiang2", "zhu4")
-	fmt.Printf("%+v \n ", test_map.data)
+	fmt.Printf("%+v \n ", testmap.ttl)
+	testmap.SetData("jiang2", "zhu4")
+	fmt.Printf("%+v \n ", testmap.ttl)
 }
 func TestMap_tll_Set_callback(t *testing.T) {
+	println("callback")
 	c := make(chan interface{})
-	test_map.Set_callback(&c)
-	test_map.Set("jiang", "zhu", time.Second*5)
+	testmap.Set_callback(&c)
+	testmap.Set("jiang", "zhu", time.Second*5)
 	v := <-c
 	println(v.(string))
 }
 func TestMap_tll_Clear(t *testing.T) {
-	test_map.Set("jiang1", "zhu1", 0)
-	test_map.Set("jiang2", "zhu2", 0)
-	test_map.Set("jiang3", "zhu3", 0)
+	println("clear")
+	testmap.Set("jiang1", "zhu1", 0)
+	testmap.Set("jiang2", "zhu2", 0)
+	testmap.Set("jiang3", "zhu3", 0)
 
-	fmt.Printf("%+v \n ", test_map.data)
-	test_map.Clear()
-	fmt.Printf("%+v \n ", test_map.data)
+	fmt.Printf("%+v \n ", testmap.ttl)
+	testmap.Clear()
+	fmt.Printf("%+v \n ", testmap.ttl)
 }
 func TestMap_tll_Len(t *testing.T) {
-	test_map.Set("jiang1", "zhu1", 0)
-	test_map.Set("jiang2", "zhu2", 0)
-	test_map.Set("jiang3", "zhu3", 0)
+	println("len")
+	testmap.Set("jiang1", "zhu1", 0)
+	testmap.Set("jiang2", "zhu2", 0)
+	testmap.Set("jiang3", "zhu3", 0)
 
-	fmt.Printf("%d \n ", test_map.Len())
+	fmt.Printf("%d \n ", testmap.Len())
 }
 
 func TestMap_tll_Range(t *testing.T) {
-	test_map.Set("jiang1", "zhu1", 0)
-	test_map.Set("jiang2", "zhu2", 0)
-	test_map.Set("jiang3", "zhu3", 0)
-	test_map.Range(func(key interface{}, value interface{}) {
+	println("range")
+	testmap.Set("jiang1", "zhu1", 0)
+	testmap.Set("jiang2", "zhu2", 0)
+	testmap.Set("jiang3", "zhu3", 0)
+	testmap.Range(func(key interface{}, value interface{}) {
 		fmt.Printf("%s %s \n", key, value)
 	})
 }
 func TestMap_tll_UnsafeSetData(t *testing.T) {
-	test_map.Set("jiang1", "zhu1", 0)
-	test_map.Set("jiang2", "zhu2", 0)
-	test_map.Set("jiang3", "zhu3", 0)
-	test_map.Range(func(key interface{}, value interface{}) {
-		test_map.UnsafeSetData(key, 111)
+	println("unsafesetdata")
+	testmap.Set("jiang1", "zhu1", 0)
+	testmap.Set("jiang2", "zhu2", 0)
+	testmap.Set("jiang3", "zhu3", 0)
+	testmap.Range(func(key interface{}, value interface{}) {
+		testmap.UnsafeSetData(key, 111)
 	})
-	fmt.Printf("%+v \n ", test_map.data)
+	fmt.Printf("%+v \n ", testmap.ttl)
 }
