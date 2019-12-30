@@ -15,13 +15,13 @@ type data struct {
 	Close_chan   chan int
 	Timeout_time time.Time
 }
-type map_ttl struct {
+type Map_ttl struct {
 	sync.RWMutex
 	ttl       map[interface{}]data
 	data_chan *chan interface{}
 }
 
-func (slf *map_ttl) tll(key interface{}, ttl time.Duration, close_chan chan int) {
+func (slf *Map_ttl) tll(key interface{}, ttl time.Duration, close_chan chan int) {
 	select {
 	case <-time.After(ttl):
 		slf.Lock()
@@ -39,15 +39,15 @@ func (slf *map_ttl) tll(key interface{}, ttl time.Duration, close_chan chan int)
 	}
 
 }
-func (slf *map_ttl) Set_callback(callback_chan *chan interface{}) {
+func (slf *Map_ttl) Set_callback(callback_chan *chan interface{}) {
 	slf.Lock()
 	defer slf.Unlock()
 	slf.data_chan = callback_chan
 }
-func (slf *map_ttl) Init() {
+func (slf *Map_ttl) Init() {
 	slf.ttl = make(map[interface{}]data)
 }
-func (slf *map_ttl) SetData(key, value interface{}) bool {
+func (slf *Map_ttl) SetData(key, value interface{}) bool {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
@@ -59,7 +59,7 @@ func (slf *map_ttl) SetData(key, value interface{}) bool {
 	}
 	return false
 }
-func (slf *map_ttl) UnsafeSetData(key, value interface{}) bool {
+func (slf *Map_ttl) UnsafeSetData(key, value interface{}) bool {
 	if slf.ttl != nil {
 		if v, ok := slf.ttl[key]; ok {
 			v.value = value
@@ -69,7 +69,7 @@ func (slf *map_ttl) UnsafeSetData(key, value interface{}) bool {
 	}
 	return false
 }
-func (slf *map_ttl) Set(key, value interface{}, ttl time.Duration) {
+func (slf *Map_ttl) Set(key, value interface{}, ttl time.Duration) {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
@@ -88,7 +88,7 @@ func (slf *map_ttl) Set(key, value interface{}, ttl time.Duration) {
 		go slf.tll(key, ttl, Close_chan)
 	}
 }
-func (slf *map_ttl) Get(key interface{}) interface{} {
+func (slf *Map_ttl) Get(key interface{}) interface{} {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
@@ -98,7 +98,7 @@ func (slf *map_ttl) Get(key interface{}) interface{} {
 	}
 	return nil
 }
-func (slf *map_ttl) Del(key interface{}) {
+func (slf *Map_ttl) Del(key interface{}) {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
@@ -107,7 +107,7 @@ func (slf *map_ttl) Del(key interface{}) {
 		}
 	}
 }
-func (slf *map_ttl) Get_ttl(key interface{}) time.Duration {
+func (slf *Map_ttl) Get_ttl(key interface{}) time.Duration {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
@@ -117,7 +117,7 @@ func (slf *map_ttl) Get_ttl(key interface{}) time.Duration {
 	}
 	return -1
 }
-func (slf *map_ttl) Clear() {
+func (slf *Map_ttl) Clear() {
 	slf.Lock()
 	defer slf.Unlock()
 	for _, data := range slf.ttl {
@@ -129,7 +129,7 @@ func (slf *map_ttl) Clear() {
 		}
 	}
 }
-func (slf *map_ttl) Len() int {
+func (slf *Map_ttl) Len() int {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl == nil {
@@ -138,7 +138,7 @@ func (slf *map_ttl) Len() int {
 		return len(slf.ttl)
 	}
 }
-func (slf *map_ttl) Range(f func(key interface{}, value interface{})) {
+func (slf *Map_ttl) Range(f func(key interface{}, value interface{})) {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {

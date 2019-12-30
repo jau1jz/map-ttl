@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var testmap map_ttl
+var testmap Map_ttl
 
 func init() {
 	testmap.Init()
