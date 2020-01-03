@@ -143,7 +143,7 @@ func (slf *Map_ttl) Range(f func(key interface{}, value interface{})) {
 	defer slf.Unlock()
 	if slf.ttl != nil {
 		for k, v := range slf.ttl {
-			f(k, v)
+			f(k, v.value)
 		}
 	}
 }
