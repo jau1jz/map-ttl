@@ -22,8 +22,12 @@ type Map_ttl struct {
 }
 
 func (slf *Map_ttl) tll(key interface{}, ttl time.Duration, close_chan chan int) {
+	var timeout_chan <-chan time.Time
+	if ttl > 0 {
+		timeout_chan = time.After(ttl)
+	}
 	select {
-	case <-time.After(ttl):
+	case <-timeout_chan:
 		slf.Lock()
 		defer slf.Unlock()
 		if slf.data_chan != nil {
@@ -75,9 +79,6 @@ func (slf *Map_ttl) Set(key, value interface{}, ttl time.Duration) {
 	if slf.ttl != nil {
 		if v, ok := slf.ttl[key]; ok {
 			v.Close_chan <- Reset
-		}
-		if ttl == 0 {
-			ttl = time.Minute * 65535
 		}
 		Close_chan := make(chan int)
 		slf.ttl[key] = data{
