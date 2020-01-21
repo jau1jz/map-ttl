@@ -11,47 +11,58 @@ const (
 )
 
 type data struct {
-	value        interface{}
-	Close_chan   chan int
-	Timeout_time time.Time
-}
-type Map_ttl struct {
-	sync.RWMutex
-	ttl       map[interface{}]data
-	data_chan *chan interface{}
+	value       interface{}
+	CloseChan   chan comData
+	TimeoutTime time.Time
 }
 
-func (slf *Map_ttl) tll(key interface{}, ttl time.Duration, close_chan chan int) {
-	var timeout_chan <-chan time.Time
-	if ttl > 0 {
-		timeout_chan = time.After(ttl)
-	}
-	select {
-	case <-timeout_chan:
-		slf.Lock()
-		defer slf.Unlock()
-		if slf.data_chan != nil {
-			if v, ok := slf.ttl[key]; ok {
-				*slf.data_chan <- v.value
+type comData struct {
+	Flag   int
+	NewTtl time.Duration
+}
+type MapTtl struct {
+	sync.RWMutex
+	ttl          map[interface{}]data
+	callbackChan *chan interface{}
+}
+
+func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData) {
+
+	for {
+		var timeoutChan <-chan time.Time
+		if ttl > 0 {
+			timeoutChan = time.After(ttl)
+		}
+		select {
+		case <-timeoutChan:
+			slf.Lock()
+			if slf.callbackChan != nil {
+				if v, ok := slf.ttl[key]; ok {
+					*slf.callbackChan <- v.value
+				}
+			}
+			delete(slf.ttl, key)
+			slf.Unlock()
+			break
+		case data := <-_chan:
+			if data.Flag == Del {
+				delete(slf.ttl, key)
+			} else if data.Flag == Reset {
+				ttl = data.NewTtl
 			}
 		}
-		delete(slf.ttl, key)
-	case flag := <-close_chan:
-		if flag == Del {
-			delete(slf.ttl, key)
-		}
 	}
 
 }
-func (slf *Map_ttl) Set_callback(callback_chan *chan interface{}) {
+func (slf *MapTtl) SetCallback(callbackChan *chan interface{}) {
 	slf.Lock()
 	defer slf.Unlock()
-	slf.data_chan = callback_chan
+	slf.callbackChan = callbackChan
 }
-func (slf *Map_ttl) Init() {
+func (slf *MapTtl) Init() {
 	slf.ttl = make(map[interface{}]data)
 }
-func (slf *Map_ttl) SetData(key, value interface{}) bool {
+func (slf *MapTtl) SetData(key, value interface{}) bool {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
@@ -63,7 +74,7 @@ func (slf *Map_ttl) SetData(key, value interface{}) bool {
 	}
 	return false
 }
-func (slf *Map_ttl) UnsafeSetData(key, value interface{}) bool {
+func (slf *MapTtl) UnsafeSetData(key, value interface{}) bool {
 	if slf.ttl != nil {
 		if v, ok := slf.ttl[key]; ok {
 			v.value = value
@@ -73,23 +84,26 @@ func (slf *Map_ttl) UnsafeSetData(key, value interface{}) bool {
 	}
 	return false
 }
-func (slf *Map_ttl) Set(key, value interface{}, ttl time.Duration) {
+func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration) {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
 		if v, ok := slf.ttl[key]; ok {
-			v.Close_chan <- Reset
+			v.CloseChan <- comData{
+				Flag:   Reset,
+				NewTtl: ttl,
+			}
 		}
-		Close_chan := make(chan int)
+		CloseChan := make(chan comData)
 		slf.ttl[key] = data{
-			Timeout_time: time.Now().Add(ttl),
-			Close_chan:   Close_chan,
-			value:        value,
+			TimeoutTime: time.Now().Add(ttl),
+			CloseChan:   CloseChan,
+			value:       value,
 		}
-		go slf.tll(key, ttl, Close_chan)
+		go slf.tll(key, ttl, CloseChan)
 	}
 }
-func (slf *Map_ttl) Get(key interface{}) interface{} {
+func (slf *MapTtl) Get(key interface{}) interface{} {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
@@ -99,30 +113,34 @@ func (slf *Map_ttl) Get(key interface{}) interface{} {
 	}
 	return nil
 }
-func (slf *Map_ttl) Del(key interface{}) {
+func (slf *MapTtl) Del(key interface{}) {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
 		if v, ok := slf.ttl[key]; ok {
-			v.Close_chan <- Del
+			v.CloseChan <- comData{
+				Flag: Del,
+			}
 		}
 	}
 }
-func (slf *Map_ttl) Get_ttl(key interface{}) time.Duration {
+func (slf *MapTtl) GetTtl(key interface{}) time.Duration {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {
 		if v, ok := slf.ttl[key]; ok {
-			return v.Timeout_time.Sub(time.Now())
+			return v.TimeoutTime.Sub(time.Now())
 		}
 	}
 	return -1
 }
-func (slf *Map_ttl) Clear() {
+func (slf *MapTtl) Clear() {
 	slf.Lock()
 	defer slf.Unlock()
 	for _, data := range slf.ttl {
-		data.Close_chan <- Del
+		data.CloseChan <- comData{
+			Flag: Del,
+		}
 	}
 	for {
 		if len(slf.ttl) == 0 {
@@ -130,7 +148,7 @@ func (slf *Map_ttl) Clear() {
 		}
 	}
 }
-func (slf *Map_ttl) Len() int {
+func (slf *MapTtl) Len() int {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl == nil {
@@ -139,7 +157,7 @@ func (slf *Map_ttl) Len() int {
 		return len(slf.ttl)
 	}
 }
-func (slf *Map_ttl) Range(f func(key interface{}, value interface{})) {
+func (slf *MapTtl) Range(f func(key interface{}, value interface{})) {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.ttl != nil {

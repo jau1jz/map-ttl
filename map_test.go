@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-var testmap Map_ttl
+var testmap MapTtl
 
 func init() {
 	testmap.Init()
 }
 func TestMap_tll_Set(t *testing.T) {
-	testmap := Map_ttl{}
+	testmap := MapTtl{}
 	testmap.Init()
 	println("Set")
 	testmap.Set("jiang", "zhu", time.Minute)
@@ -43,10 +43,11 @@ func TestMap_tll_Del(t *testing.T) {
 func TestMap_tll_Set_callback(t *testing.T) {
 	println("callback")
 	c := make(chan interface{})
-	testmap.Set_callback(&c)
-	testmap.Set("jiang", "zhu", 0)
-	//v := <-c
-	//println(v.(string))
+	testmap.SetCallback(&c)
+	testmap.Set("jiang", "zhu", time.Second*500)
+	testmap.Set("jiang", "zhu", time.Second*5)
+	v := <-c
+	println(v.(string))
 }
 func TestMap_tll_Clear(t *testing.T) {
 	println("clear")
