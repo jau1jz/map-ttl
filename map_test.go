@@ -19,7 +19,7 @@ func TestMap_tll_Set(t *testing.T) {
 	testmap.Set("jiang", "zhu1", time.Minute)
 	testmap.Set("jiang1", "zhu1", time.Minute)
 
-	fmt.Printf("%+v \n ", testmap.ttl)
+	fmt.Printf("%+v \n ", testmap.data)
 }
 func TestMap_tll_Get(t *testing.T) {
 	println("Get")
@@ -33,12 +33,12 @@ func TestMap_tll_Del(t *testing.T) {
 	testmap.Set("jiang1", "zhu1", 0)
 	testmap.Set("jiang2", "zhu2", 0)
 	testmap.Set("jiang3", "zhu3", 0)
-	fmt.Printf("%+v \n ", testmap.ttl)
+	fmt.Printf("%+v \n ", testmap.data)
 	testmap.Del("jiang3")
 	time.Sleep(time.Second)
-	fmt.Printf("%+v \n ", testmap.ttl)
+	fmt.Printf("%+v \n ", testmap.data)
 	testmap.SetData("jiang2", "zhu4")
-	fmt.Printf("%+v \n ", testmap.ttl)
+	fmt.Printf("%+v \n ", testmap.data)
 }
 func TestMap_tll_Set_callback(t *testing.T) {
 	println("callback")
@@ -55,9 +55,9 @@ func TestMap_tll_Clear(t *testing.T) {
 	testmap.Set("jiang2", "zhu2", 0)
 	testmap.Set("jiang3", "zhu3", 0)
 
-	fmt.Printf("%+v \n ", testmap.ttl)
+	fmt.Printf("%+v \n ", testmap.data)
 	testmap.Clear()
-	fmt.Printf("%+v \n ", testmap.ttl)
+	fmt.Printf("%+v \n ", testmap.data)
 }
 func TestMap_tll_Len(t *testing.T) {
 	println("len")
@@ -85,5 +85,5 @@ func TestMap_tll_UnsafeSetData(t *testing.T) {
 	testmap.Range(func(key interface{}, value interface{}) {
 		testmap.UnsafeSetData(key, 111)
 	})
-	fmt.Printf("%+v \n ", testmap.ttl)
+	fmt.Printf("%+v \n ", testmap.data)
 }

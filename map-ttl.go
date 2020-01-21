@@ -22,7 +22,7 @@ type comData struct {
 }
 type MapTtl struct {
 	sync.RWMutex
-	ttl          map[interface{}]data
+	data         map[interface{}]data
 	callbackChan *chan interface{}
 }
 
@@ -37,16 +37,16 @@ func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData) {
 		case <-timeoutChan:
 			slf.Lock()
 			if slf.callbackChan != nil {
-				if v, ok := slf.ttl[key]; ok {
+				if v, ok := slf.data[key]; ok {
 					*slf.callbackChan <- v.value
 				}
 			}
-			delete(slf.ttl, key)
+			delete(slf.data, key)
 			slf.Unlock()
 			break
 		case data := <-_chan:
 			if data.Flag == Del {
-				delete(slf.ttl, key)
+				delete(slf.data, key)
 			} else if data.Flag == Reset {
 				ttl = data.NewTtl
 			}
@@ -60,25 +60,25 @@ func (slf *MapTtl) SetCallback(callbackChan *chan interface{}) {
 	slf.callbackChan = callbackChan
 }
 func (slf *MapTtl) Init() {
-	slf.ttl = make(map[interface{}]data)
+	slf.data = make(map[interface{}]data)
 }
 func (slf *MapTtl) SetData(key, value interface{}) bool {
 	slf.Lock()
 	defer slf.Unlock()
-	if slf.ttl != nil {
-		if v, ok := slf.ttl[key]; ok {
+	if slf.data != nil {
+		if v, ok := slf.data[key]; ok {
 			v.value = value
-			slf.ttl[key] = v
+			slf.data[key] = v
 			return true
 		}
 	}
 	return false
 }
 func (slf *MapTtl) UnsafeSetData(key, value interface{}) bool {
-	if slf.ttl != nil {
-		if v, ok := slf.ttl[key]; ok {
+	if slf.data != nil {
+		if v, ok := slf.data[key]; ok {
 			v.value = value
-			slf.ttl[key] = v
+			slf.data[key] = v
 			return true
 		}
 	}
@@ -87,15 +87,15 @@ func (slf *MapTtl) UnsafeSetData(key, value interface{}) bool {
 func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration) {
 	slf.Lock()
 	defer slf.Unlock()
-	if slf.ttl != nil {
-		if v, ok := slf.ttl[key]; ok {
+	if slf.data != nil {
+		if v, ok := slf.data[key]; ok {
 			v.CloseChan <- comData{
 				Flag:   Reset,
 				NewTtl: ttl,
 			}
 		}
 		CloseChan := make(chan comData)
-		slf.ttl[key] = data{
+		slf.data[key] = data{
 			TimeoutTime: time.Now().Add(ttl),
 			CloseChan:   CloseChan,
 			value:       value,
@@ -106,8 +106,8 @@ func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration) {
 func (slf *MapTtl) Get(key interface{}) interface{} {
 	slf.Lock()
 	defer slf.Unlock()
-	if slf.ttl != nil {
-		if v, ok := slf.ttl[key]; ok {
+	if slf.data != nil {
+		if v, ok := slf.data[key]; ok {
 			return v.value
 		}
 	}
@@ -116,8 +116,8 @@ func (slf *MapTtl) Get(key interface{}) interface{} {
 func (slf *MapTtl) Del(key interface{}) {
 	slf.Lock()
 	defer slf.Unlock()
-	if slf.ttl != nil {
-		if v, ok := slf.ttl[key]; ok {
+	if slf.data != nil {
+		if v, ok := slf.data[key]; ok {
 			v.CloseChan <- comData{
 				Flag: Del,
 			}
@@ -127,8 +127,8 @@ func (slf *MapTtl) Del(key interface{}) {
 func (slf *MapTtl) GetTtl(key interface{}) time.Duration {
 	slf.Lock()
 	defer slf.Unlock()
-	if slf.ttl != nil {
-		if v, ok := slf.ttl[key]; ok {
+	if slf.data != nil {
+		if v, ok := slf.data[key]; ok {
 			return v.TimeoutTime.Sub(time.Now())
 		}
 	}
@@ -137,13 +137,13 @@ func (slf *MapTtl) GetTtl(key interface{}) time.Duration {
 func (slf *MapTtl) Clear() {
 	slf.Lock()
 	defer slf.Unlock()
-	for _, data := range slf.ttl {
+	for _, data := range slf.data {
 		data.CloseChan <- comData{
 			Flag: Del,
 		}
 	}
 	for {
-		if len(slf.ttl) == 0 {
+		if len(slf.data) == 0 {
 			break
 		}
 	}
@@ -151,17 +151,17 @@ func (slf *MapTtl) Clear() {
 func (slf *MapTtl) Len() int {
 	slf.Lock()
 	defer slf.Unlock()
-	if slf.ttl == nil {
+	if slf.data == nil {
 		return 0
 	} else {
-		return len(slf.ttl)
+		return len(slf.data)
 	}
 }
 func (slf *MapTtl) Range(f func(key interface{}, value interface{})) {
 	slf.Lock()
 	defer slf.Unlock()
-	if slf.ttl != nil {
-		for k, v := range slf.ttl {
+	if slf.data != nil {
+		for k, v := range slf.data {
 			f(k, v.value)
 		}
 	}
