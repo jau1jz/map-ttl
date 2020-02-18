@@ -17,8 +17,9 @@ type data struct {
 }
 
 type comData struct {
-	Flag   int
-	NewTtl time.Duration
+	Flag              int
+	NewTtl            time.Duration
+	timeoutDeleteFlag bool
 }
 type MapTtl struct {
 	sync.RWMutex
@@ -26,8 +27,8 @@ type MapTtl struct {
 	callbackChan *chan interface{}
 }
 
-func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData) {
-
+func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData, DeleteFlag bool) {
+	timeoutDeleteFlag := DeleteFlag
 	for {
 		var timeoutChan <-chan time.Time
 		if ttl > 0 {
@@ -37,22 +38,26 @@ func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData) {
 		case <-timeoutChan:
 			slf.Lock()
 			if slf.callbackChan != nil {
-				if v, ok := slf.data[key]; ok {
+				v, ok := slf.data[key]
+				if ok {
 					*slf.callbackChan <- v.value
 				}
 			}
-			delete(slf.data, key)
+
 			slf.Unlock()
-			break
+			if timeoutDeleteFlag == true {
+				delete(slf.data, key)
+				break
+			}
 		case data := <-_chan:
 			if data.Flag == Del {
 				delete(slf.data, key)
 			} else if data.Flag == Reset {
 				ttl = data.NewTtl
+				timeoutDeleteFlag = data.timeoutDeleteFlag
 			}
 		}
 	}
-
 }
 func (slf *MapTtl) SetCallback(callbackChan *chan interface{}) {
 	slf.Lock()
@@ -84,7 +89,7 @@ func (slf *MapTtl) UnsafeSetData(key, value interface{}) bool {
 	}
 	return false
 }
-func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration) {
+func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration, TimeOutDelete bool) {
 	slf.Lock()
 	defer slf.Unlock()
 	if slf.data != nil {
@@ -100,7 +105,7 @@ func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration) {
 			CloseChan:   CloseChan,
 			value:       value,
 		}
-		go slf.tll(key, ttl, CloseChan)
+		go slf.tll(key, ttl, CloseChan, TimeOutDelete)
 	}
 }
 func (slf *MapTtl) Get(key interface{}) interface{} {
