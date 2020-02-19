@@ -99,3 +99,28 @@ func TestMap_tll_UnsafeSetData(t *testing.T) {
 	})
 	fmt.Printf("%+v \n ", testmap.data)
 }
+func TestMap_tll_Set_FPS(t *testing.T) {
+	c := make(chan interface{})
+	testmap.SetCallback(&c)
+	Count := 1000000
+	go func() {
+		for i := 0; i < Count; i++ {
+			testmap.Set(i, i, time.Second*10, true)
+		}
+	}()
+
+	Sum := 0
+	for {
+
+		select {
+		case v := <-c:
+			Sum += v.(int)
+			Count--
+			if Count == 0 {
+				println(Sum)
+				return
+			}
+
+		}
+	}
+}
