@@ -37,6 +37,7 @@ func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData, D
 		select {
 		case <-timeoutChan:
 			slf.Lock()
+
 			if slf.callbackChan != nil {
 				v, ok := slf.data[key]
 				if ok {
@@ -44,11 +45,12 @@ func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData, D
 				}
 			}
 
-			slf.Unlock()
 			if timeoutDeleteFlag == true {
 				delete(slf.data, key)
+				slf.Unlock()
 				break
 			}
+			slf.Unlock()
 		case data := <-_chan:
 			if data.Flag == Del {
 				delete(slf.data, key)
