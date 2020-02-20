@@ -6,28 +6,89 @@ import (
 )
 
 const (
+	Set   = 0
 	Del   = 1
 	Reset = 2
 )
 
 type data struct {
-	value       interface{}
-	CloseChan   chan comData
-	TimeoutTime time.Time
+	changeChan chan comData
+	data       interface{}
+}
+type newMapData struct {
+	Flag       int
+	key        interface{}
+	value      interface{}
+	ChangeChan chan comData
+	Ttl        time.Duration
+	deleteFlag bool
 }
 
 type comData struct {
 	Flag              int
 	NewTtl            time.Duration
 	timeoutDeleteFlag bool
+	value             interface{}
 }
 type MapTtl struct {
 	sync.RWMutex
 	data         map[interface{}]data
+	SetChan      chan newMapData
 	callbackChan *chan interface{}
+	len          uint
 }
 
-func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData, DeleteFlag bool) {
+func (slf *MapTtl) Init(callbackChan *chan interface{}) {
+	slf.data = make(map[interface{}]data)
+	slf.SetChan = make(chan newMapData, 1000)
+	slf.callbackChan = callbackChan
+	go slf.goMap()
+	time.Sleep(time.Second)
+}
+func (slf *MapTtl) goMap() {
+	for {
+		select {
+		case v := <-slf.SetChan:
+			if v.Flag == Set {
+				data := data{
+					changeChan: v.ChangeChan,
+				}
+				if value, ok := slf.data[v.key]; ok {
+					value.changeChan <- comData{
+						Flag:              Reset,
+						NewTtl:            v.Ttl,
+						timeoutDeleteFlag: v.deleteFlag,
+						value:             v.value,
+					}
+				} else {
+					slf.len++
+					slf.data[v.key] = data
+					go slf.tll(v.key, v.value, v.Ttl, v.ChangeChan, v.deleteFlag)
+				}
+			} else if v.Flag == Del {
+				if value, ok := slf.data[v.key]; ok {
+					slf.len--
+					delete(slf.data, v.key)
+					value.changeChan <- comData{
+						Flag: Del,
+					}
+
+				}
+			}
+		}
+	}
+}
+func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration, TimeOutDelete bool) {
+	slf.SetChan <- newMapData{
+		Flag:       Set,
+		key:        key,
+		value:      value,
+		ChangeChan: make(chan comData),
+		Ttl:        ttl,
+		deleteFlag: TimeOutDelete,
+	}
+}
+func (slf *MapTtl) tll(key interface{}, value interface{}, ttl time.Duration, _chan chan comData, DeleteFlag bool) {
 	timeoutDeleteFlag := DeleteFlag
 	for {
 		var timeoutChan <-chan time.Time
@@ -36,140 +97,45 @@ func (slf *MapTtl) tll(key interface{}, ttl time.Duration, _chan chan comData, D
 		}
 		select {
 		case <-timeoutChan:
-			slf.Lock()
-
 			if slf.callbackChan != nil {
-				v, ok := slf.data[key]
-				if ok {
-					*slf.callbackChan <- v.value
-				}
+				*slf.callbackChan <- value
+			}
+			if timeoutDeleteFlag == true {
+				close(_chan)
+				return
 			}
 
-			if timeoutDeleteFlag == true {
-				delete(slf.data, key)
-				slf.Unlock()
-				break
-			}
-			slf.Unlock()
 		case data := <-_chan:
 			if data.Flag == Del {
-				delete(slf.data, key)
+				close(_chan)
+				return
 			} else if data.Flag == Reset {
 				ttl = data.NewTtl
 				timeoutDeleteFlag = data.timeoutDeleteFlag
+				value = data.value
 			}
 		}
 	}
 }
-func (slf *MapTtl) SetCallback(callbackChan *chan interface{}) {
-	slf.Lock()
-	defer slf.Unlock()
-	slf.callbackChan = callbackChan
-}
-func (slf *MapTtl) Init() {
-	slf.data = make(map[interface{}]data)
-}
-func (slf *MapTtl) SetData(key, value interface{}) bool {
-	slf.Lock()
-	defer slf.Unlock()
-	if slf.data != nil {
-		if v, ok := slf.data[key]; ok {
-			v.value = value
-			slf.data[key] = v
-			return true
-		}
-	}
-	return false
-}
-func (slf *MapTtl) UnsafeSetData(key, value interface{}) bool {
-	if slf.data != nil {
-		if v, ok := slf.data[key]; ok {
-			v.value = value
-			slf.data[key] = v
-			return true
-		}
-	}
-	return false
-}
-func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration, TimeOutDelete bool) {
-	slf.Lock()
-	defer slf.Unlock()
-	if slf.data != nil {
-		if v, ok := slf.data[key]; ok {
-			v.CloseChan <- comData{
-				Flag:   Reset,
-				NewTtl: ttl,
-			}
-		}
-		CloseChan := make(chan comData)
-		slf.data[key] = data{
-			TimeoutTime: time.Now().Add(ttl),
-			CloseChan:   CloseChan,
-			value:       value,
-		}
-		go slf.tll(key, ttl, CloseChan, TimeOutDelete)
-	}
-}
-func (slf *MapTtl) Get(key interface{}) interface{} {
-	slf.Lock()
-	defer slf.Unlock()
-	if slf.data != nil {
-		if v, ok := slf.data[key]; ok {
-			return v.value
-		}
-	}
-	return nil
-}
+
 func (slf *MapTtl) Del(key interface{}) {
-	slf.Lock()
-	defer slf.Unlock()
-	if slf.data != nil {
-		if v, ok := slf.data[key]; ok {
-			v.CloseChan <- comData{
-				Flag: Del,
-			}
-		}
+	slf.SetChan <- newMapData{
+		Flag: Del,
+		key:  key,
 	}
-}
-func (slf *MapTtl) GetTtl(key interface{}) time.Duration {
-	slf.Lock()
-	defer slf.Unlock()
-	if slf.data != nil {
-		if v, ok := slf.data[key]; ok {
-			return v.TimeoutTime.Sub(time.Now())
-		}
-	}
-	return -1
+
 }
 func (slf *MapTtl) Clear() {
 	slf.Lock()
 	defer slf.Unlock()
 	for _, data := range slf.data {
-		data.CloseChan <- comData{
+		data.changeChan <- comData{
 			Flag: Del,
 		}
 	}
 	for {
 		if len(slf.data) == 0 {
 			break
-		}
-	}
-}
-func (slf *MapTtl) Len() int {
-	slf.Lock()
-	defer slf.Unlock()
-	if slf.data == nil {
-		return 0
-	} else {
-		return len(slf.data)
-	}
-}
-func (slf *MapTtl) Range(f func(key interface{}, value interface{})) {
-	slf.Lock()
-	defer slf.Unlock()
-	if slf.data != nil {
-		for k, v := range slf.data {
-			f(k, v.value)
 		}
 	}
 }
