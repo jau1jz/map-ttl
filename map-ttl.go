@@ -9,6 +9,7 @@ const (
 	Set   = 0
 	Del   = 1
 	Reset = 2
+	Clear = 3
 )
 
 type data struct {
@@ -33,14 +34,14 @@ type comData struct {
 type MapTtl struct {
 	sync.RWMutex
 	data         map[interface{}]data
-	SetChan      chan newMapData
+	mapChan      chan newMapData
 	callbackChan *chan interface{}
 	len          uint
 }
 
 func (slf *MapTtl) Init(callbackChan *chan interface{}) {
 	slf.data = make(map[interface{}]data)
-	slf.SetChan = make(chan newMapData, 1000)
+	slf.mapChan = make(chan newMapData, 1000)
 	slf.callbackChan = callbackChan
 	go slf.goMap()
 	time.Sleep(time.Second)
@@ -48,7 +49,7 @@ func (slf *MapTtl) Init(callbackChan *chan interface{}) {
 func (slf *MapTtl) goMap() {
 	for {
 		select {
-		case v := <-slf.SetChan:
+		case v := <-slf.mapChan:
 			if v.Flag == Set {
 				data := data{
 					changeChan: v.ChangeChan,
@@ -72,14 +73,20 @@ func (slf *MapTtl) goMap() {
 					value.changeChan <- comData{
 						Flag: Del,
 					}
-
 				}
+			} else if v.Flag == Clear {
+				for _, v := range slf.data {
+					v.changeChan <- comData{
+						Flag: Del,
+					}
+				}
+				slf.data = make(map[interface{}]data)
 			}
 		}
 	}
 }
 func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration, TimeOutDelete bool) {
-	slf.SetChan <- newMapData{
+	slf.mapChan <- newMapData{
 		Flag:       Set,
 		key:        key,
 		value:      value,
@@ -119,23 +126,14 @@ func (slf *MapTtl) tll(key interface{}, value interface{}, ttl time.Duration, _c
 }
 
 func (slf *MapTtl) Del(key interface{}) {
-	slf.SetChan <- newMapData{
+	slf.mapChan <- newMapData{
 		Flag: Del,
 		key:  key,
 	}
 
 }
 func (slf *MapTtl) Clear() {
-	slf.Lock()
-	defer slf.Unlock()
-	for _, data := range slf.data {
-		data.changeChan <- comData{
-			Flag: Del,
-		}
-	}
-	for {
-		if len(slf.data) == 0 {
-			break
-		}
+	slf.mapChan <- newMapData{
+		Flag: Clear,
 	}
 }
