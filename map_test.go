@@ -1,6 +1,7 @@
 package map_ttl
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -16,20 +17,22 @@ func init() {
 }
 
 //func TestMap_tll_Set_FPS(t *testing.T) {
-//	Count := 1000
-//
+//	Count := 1000000
+//	c := make(chan int )
 //	go func() {
 //		for i := 0; i < Count; i++ {
 //			testmap.Set(i, i, time.Second * time.Duration(rand.Int31n(100)) , true)
 //		}
+//		c <- 1
 //	}()
 //
-//	for {
-//		select {
-//			case v := <- c :
-//				fmt.Println(v.(int))
-//		}
-//	}
+//	<-c
+//	//for {
+//	//	select {
+//	//		case v := <- c :
+//	//			fmt.Println(v.(int))
+//	//	}
+//	//}
 //
 //}
 
@@ -54,47 +57,35 @@ func TestMap_tll_Set(t *testing.T) {
 	testmap.Set("jiang", "zhu", 0, true)
 	testmap.Set("jiang", "zhu1", 0, true)
 	testmap.Set("jiang1", "zhu1", 0, true)
+	testmap.Set("jiang1", "zhu1", 0, true)
+	testmap.Set("jiang2", "zhu2", 0, true)
+	testmap.Set("jiang3", "zhu3", 0, true)
 
-	time.Sleep(time.Second * 10)
-
-	println("Test set end")
+	println("Test set End")
 }
-
-//func TestMap_tll_Get(t *testing.T) {
-//	println("Test Get start")
-//	if obj := testmap.Get("jiang"); obj != nil {
-//		println(obj.(string))
-//	}
-//}
 
 func TestMap_tll_Del(t *testing.T) {
 	println("Test Del Start")
 
 	testmap.Del("jiang")
-	time.Sleep(time.Second)
-	println("Test Del end")
+
+	println("Test Del End")
 }
 
-//
-//func TestMap_tll_Clear(t *testing.T) {
-//	println("clear")
-//	testmap.Set("jiang1", "zhu1", 0, true)
-//	testmap.Set("jiang2", "zhu2", 0, true)
-//	testmap.Set("jiang3", "zhu3", 0, true)
-//
-//	fmt.Printf("%+v \n ", testmap.data)
-//	testmap.Clear()
-//	fmt.Printf("%+v \n ", testmap.data)
-//}
-//func TestMap_tll_Len(t *testing.T) {
-//	println("len")
-//	testmap.Set("jiang1", "zhu1", 0, true)
-//	testmap.Set("jiang2", "zhu2", 0, true)
-//	testmap.Set("jiang3", "zhu3", 0, true)
-//
-//	fmt.Printf("%d \n ", testmap.Len())
-//}
-//
+func TestMap_tll_Len(t *testing.T) {
+	println("Test Len Start")
+
+	fmt.Printf("%d \n ", testmap.Len())
+
+	println("Test Len End")
+}
+
+func TestMap_tll_Clear(t *testing.T) {
+	println("Test Clear Start")
+
+	testmap.Clear()
+	println("Test Clear End")
+}
 
 //func TestMap_tll_UnsafeSetData(t *testing.T) {
 //	println("unsafesetdata")

@@ -1,7 +1,7 @@
 package map_ttl
 
 import (
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -31,12 +31,12 @@ type comData struct {
 	timeoutDeleteFlag bool
 	value             interface{}
 }
+
 type MapTtl struct {
-	sync.RWMutex
 	data         map[interface{}]data
 	mapChan      chan newMapData
 	callbackChan *chan interface{}
-	len          uint
+	len          int64
 }
 
 func (slf *MapTtl) Init(callbackChan *chan interface{}) {
@@ -46,6 +46,7 @@ func (slf *MapTtl) Init(callbackChan *chan interface{}) {
 	go slf.goMap()
 	time.Sleep(time.Second)
 }
+
 func (slf *MapTtl) goMap() {
 	for {
 		select {
@@ -62,13 +63,13 @@ func (slf *MapTtl) goMap() {
 						value:             v.value,
 					}
 				} else {
-					slf.len++
+					atomic.AddInt64(&slf.len, 1)
 					slf.data[v.key] = data
 					go slf.tll(v.key, v.value, v.Ttl, v.ChangeChan, v.deleteFlag)
 				}
 			} else if v.Flag == Del {
 				if value, ok := slf.data[v.key]; ok {
-					slf.len--
+					atomic.AddInt64(&slf.len, -1)
 					delete(slf.data, v.key)
 					value.changeChan <- comData{
 						Flag: Del,
@@ -85,6 +86,7 @@ func (slf *MapTtl) goMap() {
 		}
 	}
 }
+
 func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration, TimeOutDelete bool) {
 	slf.mapChan <- newMapData{
 		Flag:       Set,
@@ -95,6 +97,7 @@ func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration, TimeOutDelete 
 		deleteFlag: TimeOutDelete,
 	}
 }
+
 func (slf *MapTtl) tll(key interface{}, value interface{}, ttl time.Duration, _chan chan comData, DeleteFlag bool) {
 	timeoutDeleteFlag := DeleteFlag
 	for {
@@ -132,8 +135,14 @@ func (slf *MapTtl) Del(key interface{}) {
 	}
 
 }
+
 func (slf *MapTtl) Clear() {
 	slf.mapChan <- newMapData{
 		Flag: Clear,
 	}
+}
+
+//The value of length is not necessarily accurate,Because set() is asynchronous
+func (slf *MapTtl) Len() int64 {
+	return atomic.LoadInt64(&slf.len)
 }
