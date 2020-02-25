@@ -9,18 +9,20 @@ const (
 	Set   = 0
 	Del   = 1
 	Reset = 2
-	Clear = 3
+	Get   = 3
+	Clear = 4
 )
 
 type data struct {
 	changeChan chan comData
-	data       interface{}
+	value      interface{}
 }
-type newMapData struct {
+type MapData struct {
 	Flag       int
 	key        interface{}
 	value      interface{}
 	ChangeChan chan comData
+	getChan    chan interface{}
 	Ttl        time.Duration
 	deleteFlag bool
 }
@@ -34,14 +36,14 @@ type comData struct {
 
 type MapTtl struct {
 	data         map[interface{}]data
-	mapChan      chan newMapData
+	mapChan      chan MapData
 	callbackChan *chan interface{}
 	len          int64
 }
 
 func (slf *MapTtl) Init(callbackChan *chan interface{}) {
 	slf.data = make(map[interface{}]data)
-	slf.mapChan = make(chan newMapData, 1000)
+	slf.mapChan = make(chan MapData, 1000)
 	slf.callbackChan = callbackChan
 	go slf.goMap()
 	time.Sleep(time.Second)
@@ -54,6 +56,7 @@ func (slf *MapTtl) goMap() {
 			if v.Flag == Set {
 				data := data{
 					changeChan: v.ChangeChan,
+					value:      v.value,
 				}
 				if value, ok := slf.data[v.key]; ok {
 					value.changeChan <- comData{
@@ -82,13 +85,19 @@ func (slf *MapTtl) goMap() {
 					}
 				}
 				slf.data = make(map[interface{}]data)
+			} else if v.Flag == Get {
+				if value, ok := slf.data[v.key]; ok {
+					v.getChan <- value.value
+				} else {
+					v.getChan <- nil
+				}
 			}
 		}
 	}
 }
 
 func (slf *MapTtl) Set(key, value interface{}, ttl time.Duration, TimeOutDelete bool) {
-	slf.mapChan <- newMapData{
+	slf.mapChan <- MapData{
 		Flag:       Set,
 		key:        key,
 		value:      value,
@@ -129,7 +138,7 @@ func (slf *MapTtl) tll(key interface{}, value interface{}, ttl time.Duration, _c
 }
 
 func (slf *MapTtl) Del(key interface{}) {
-	slf.mapChan <- newMapData{
+	slf.mapChan <- MapData{
 		Flag: Del,
 		key:  key,
 	}
@@ -137,7 +146,7 @@ func (slf *MapTtl) Del(key interface{}) {
 }
 
 func (slf *MapTtl) Clear() {
-	slf.mapChan <- newMapData{
+	slf.mapChan <- MapData{
 		Flag: Clear,
 	}
 }
@@ -145,4 +154,14 @@ func (slf *MapTtl) Clear() {
 //The value of length is not necessarily accurate,Because set() is asynchronous
 func (slf *MapTtl) Len() int64 {
 	return atomic.LoadInt64(&slf.len)
+}
+
+func (slf *MapTtl) Get(key interface{}) interface{} {
+	GetChan := make(chan interface{})
+	slf.mapChan <- MapData{
+		Flag:    Get,
+		key:     key,
+		getChan: GetChan,
+	}
+	return <-GetChan
 }

@@ -3,7 +3,6 @@ package map_ttl
 import (
 	"fmt"
 	"testing"
-	"time"
 )
 
 var testmap MapTtl
@@ -13,7 +12,7 @@ func init() {
 	c = make(chan interface{})
 	testmap = MapTtl{}
 	testmap.Init(&c)
-	time.Sleep(time.Second)
+	//time.Sleep(time.Second)
 }
 
 //func TestMap_tll_Set_FPS(t *testing.T) {
@@ -63,7 +62,20 @@ func TestMap_tll_Set(t *testing.T) {
 
 	println("Test set End")
 }
+func TestMap_tll_Get(t *testing.T) {
 
+	println("Test Get start")
+	for {
+		obj := testmap.Get("jiang")
+		if obj != nil {
+			println(obj.(string))
+			break
+		} else {
+			println("Get Empty")
+		}
+	}
+	println("Test Get End")
+}
 func TestMap_tll_Del(t *testing.T) {
 	println("Test Del Start")
 
@@ -75,7 +87,7 @@ func TestMap_tll_Del(t *testing.T) {
 func TestMap_tll_Len(t *testing.T) {
 	println("Test Len Start")
 
-	fmt.Printf("%d \n ", testmap.Len())
+	fmt.Printf("%d \n", testmap.Len())
 
 	println("Test Len End")
 }
@@ -95,5 +107,5 @@ func TestMap_tll_Clear(t *testing.T) {
 //	testmap.Range(func(key interface{}, value interface{}) {
 //		testmap.UnsafeSetData(key, 111)
 //	})
-//	fmt.Printf("%+v \n ", testmap.data)
+//	fmt.Printf("%+v \n ", testmap.value)
 //}
